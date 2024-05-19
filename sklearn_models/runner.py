@@ -115,6 +115,7 @@ warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
 
 # %%
 import dill
+
 with open("extractor.pkl", "rb") as f:
     extractor = dill.load(f)
     mlp_classifier.extractor.features = extractor.features
@@ -209,7 +210,8 @@ cc_mlp_classifier.fit(X, y)
 def prediction_to_labels(pred: t.Tensor) -> list[str]:
     pred = pred.reshape((11,))
     return [labels[i] for i, p in enumerate(pred) if p == 1]
-    
+
+
 def get_predictions_from_classifiers(classifiers: dict, tweet: str) -> dict:
     return {
         name: prediction_to_labels(classifier.predict([tweet]))
@@ -237,11 +239,15 @@ scores = {
 }
 
 # %%
-get_predictions_from_classifiers(classifiers, "A social media platform’s policies are good if the most extreme 10% on left and right are equally unhappy")
+get_predictions_from_classifiers(
+    classifiers,
+    "A social media platform’s policies are good if the most extreme 10% on left and right are equally unhappy",
+)
 
 # %%
-import dill
 from datetime import datetime
+
+import dill
 
 # %%
 now = datetime.now()

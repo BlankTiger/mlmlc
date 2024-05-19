@@ -19,6 +19,7 @@ import sys
 import dill
 
 sys.path.append("../")
+sys.path.append("./")
 
 # %% [markdown]
 # ## Check params for models

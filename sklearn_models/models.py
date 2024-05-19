@@ -38,9 +38,6 @@ from sklearn.multioutput import ClassifierChain
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.utils import shuffle
-
-# from skmultilearn.problem_transform import ClassifierChain
-# from skmultilearn.problem_transform import BinaryRelevance
 from torch import nn
 from torch.optim import AdamW
 from tqdm.notebook import tqdm
@@ -111,12 +108,6 @@ class TweetTokenizer(metaclass=Singleton):
         else:
             hashtag_mean = t.tensor(np.zeros(768), dtype=t.long)
         hashtag_mean = hashtag_mean.unsqueeze(0)
-
-        # if np.isnan(emoji_embeddings).all():
-        #     hashtag_mean = t.tensor(np.zeros(768), dtype=t.long)
-        # else:
-        #     hashtag_mean = t.tensor(hashtag_embeddings.mean(axis=0))
-        # hashtag_mean = hashtag_mean.unsqueeze(0)
 
         tokens = self.tokenizer.tokenize(clean_txt)
         if len(tokens) > MAX_SEQ_LEN - 2:
@@ -189,17 +180,18 @@ class FeatureExtractor(metaclass=Singleton):
 class TweetClassifierMLP(ClassifierMixin, BaseEstimator):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__()
-        self.tweet_tokenizer = TweetTokenizer(
-            XLMSentenceTransformer("xlm-r-100langs-bert-base-nli-mean-tokens"),
-            e2v,
-            XLMAutoTokenizer.from_pretrained(
+        self.extractor = FeatureExtractor(
+            TweetTokenizer(
+                XLMSentenceTransformer("xlm-r-100langs-bert-base-nli-mean-tokens"),
+                e2v,
+                XLMAutoTokenizer.from_pretrained(
+                    "sentence-transformers/xlm-r-100langs-bert-base-nli-mean-tokens"
+                ),
+            ),
+            XLMModel.from_pretrained(
                 "sentence-transformers/xlm-r-100langs-bert-base-nli-mean-tokens"
             ),
         )
-        self.xlm_model = XLMModel.from_pretrained(
-            "sentence-transformers/xlm-r-100langs-bert-base-nli-mean-tokens"
-        )
-        self.extractor = FeatureExtractor(self.tweet_tokenizer, self.xlm_model)
         self.classifier_head = MLPClassifier(*args, **kwargs)
 
     def fit(self, X: np.ndarray, y: t.Tensor) -> TweetClassifierMLP:
@@ -215,6 +207,13 @@ class TweetClassifierMLP(ClassifierMixin, BaseEstimator):
         features = self.extractor.extract_features(X)
         features_for_predict = np.array([features[x] for x in X])
         preds = self.classifier_head.predict(features_for_predict)
+        preds = np.array(preds).reshape((len(X), self.n_classes))
+        return preds
+
+    def predict_proba(self, X: np.ndarray) -> t.Tensor:
+        features = self.extractor.extract_features(X)
+        features_for_predict = np.array([features[x] for x in X])
+        preds = self.classifier_head.predict_proba(features_for_predict)
         preds = np.array(preds).reshape((len(X), self.n_classes))
         return preds
 
@@ -235,17 +234,18 @@ class TweetClassifierMLP(ClassifierMixin, BaseEstimator):
 class TweetClassifierKNN(ClassifierMixin, BaseEstimator):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__()
-        self.tweet_tokenizer = TweetTokenizer(
-            XLMSentenceTransformer("xlm-r-100langs-bert-base-nli-mean-tokens"),
-            e2v,
-            XLMAutoTokenizer.from_pretrained(
+        self.extractor = FeatureExtractor(
+            TweetTokenizer(
+                XLMSentenceTransformer("xlm-r-100langs-bert-base-nli-mean-tokens"),
+                e2v,
+                XLMAutoTokenizer.from_pretrained(
+                    "sentence-transformers/xlm-r-100langs-bert-base-nli-mean-tokens"
+                ),
+            ),
+            XLMModel.from_pretrained(
                 "sentence-transformers/xlm-r-100langs-bert-base-nli-mean-tokens"
             ),
         )
-        self.xlm_model = XLMModel.from_pretrained(
-            "sentence-transformers/xlm-r-100langs-bert-base-nli-mean-tokens"
-        )
-        self.extractor = FeatureExtractor(self.tweet_tokenizer, self.xlm_model)
         self.classifier_head = KNeighborsClassifier(*args, **kwargs)
 
     def fit(self, X: np.ndarray, y: t.Tensor) -> TweetClassifierKNN:
@@ -261,6 +261,13 @@ class TweetClassifierKNN(ClassifierMixin, BaseEstimator):
         features = self.extractor.extract_features(X)
         features_for_predict = np.array([features[x] for x in X])
         preds = self.classifier_head.predict(features_for_predict)
+        preds = np.array(preds).reshape((len(X), self.n_classes))
+        return preds
+
+    def predict_proba(self, X: np.ndarray) -> t.Tensor:
+        features = self.extractor.extract_features(X)
+        features_for_predict = np.array([features[x] for x in X])
+        preds = self.classifier_head.predict_proba(features_for_predict)
         preds = np.array(preds).reshape((len(X), self.n_classes))
         return preds
 
